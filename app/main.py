@@ -73,6 +73,7 @@ def transcribe(
     max_freq: float = typer.Option(None, "--max-freq", help="Frequência máxima em Hz"),
     min_note_len: int = typer.Option(None, "--min-note-len", help="Duração mínima de nota em ms"),
     no_melodia: bool = typer.Option(False, "--no-melodia", help="Desativa o melodia trick"),
+    melodia: bool = typer.Option(None, "--melodia", help="Ativa o melodia trick (ignora settings)"),
 ) -> None:
     """Transcreve um arquivo de áudio e gera MIDI + JSON de notas."""
     settings = load_settings()
@@ -87,7 +88,11 @@ def transcribe(
     minimum_frequency = min_freq    if min_freq     is not None else audio_cfg["minimum_frequency"]
     maximum_frequency = max_freq    if max_freq     is not None else audio_cfg["maximum_frequency"]
     min_note_length   = min_note_len if min_note_len is not None else audio_cfg["minimum_note_length"]
-    melodia           = not no_melodia and audio_cfg["melodia_trick"]
+    melodia_flag = audio_cfg["melodia_trick"]
+    if melodia is not None:
+        melodia_flag = melodia
+    elif no_melodia:
+        melodia_flag = False
 
     stem = output_name if output_name else audio_file.stem
 
@@ -189,6 +194,93 @@ def chords(
             f"{seg['confidence']:.2f}",
         )
     console.print(preview)
+
+
+@app.command()
+def process(
+    audio_file: Path = typer.Argument(
+        ...,
+        help="Caminho para o arquivo de áudio (.wav)",
+        exists=True,
+        readable=True,
+    ),
+    output_name: str = typer.Option(
+        None, "--output-name", "-n",
+        help="Nome base das saídas (padrão: nome do áudio + versão)",
+    ),
+    version: str = typer.Option("v4", "--version", "-v", help="Rótulo da versão (v4, v5...)"),
+    lowcut: float = typer.Option(75.0, "--lowcut", help="Corte grave do filtro (Hz)"),
+    highcut: float = typer.Option(1500.0, "--highcut", help="Corte agudo do filtro (Hz)"),
+    onset_delta: float = typer.Option(0.09, "--delta", help="Sensibilidade do onset detector"),
+    onset_wait: int = typer.Option(10, "--wait", help="Frames mínimos entre onsets (menor = detecta strums)"),
+    no_noise: bool = typer.Option(False, "--no-noise", help="Pula redução de ruído"),
+    no_preprocess: bool = typer.Option(False, "--no-preprocess", help="Pula todo o pré-processamento (usa o WAV bruto)"),
+    onset_only: bool = typer.Option(False, "--onset-only", help="Modo tablatura: só ataques, duração fixa, onsets próximos viram acorde"),
+    chord_cluster: float = typer.Option(0.060, "--chord-cluster", help="Janela de clustering de acorde em segundos"),
+    no_quantize: bool = typer.Option(False, "--no-quantize", help="Pula quantização rítmica"),
+    max_poly: int = typer.Option(6, "--max-poly", help="Máximo de notas simultâneas"),
+    min_dur: float = typer.Option(80.0, "--min-dur", help="Duração mínima de nota (ms)"),
+    tempo: float = typer.Option(120.0, "--tempo", help="BPM do MIDI"),
+) -> None:
+    """Pipeline completo: pré-processa, detecta onsets, transcreve, corrige e exporta MIDI + métricas."""
+    settings = load_settings()
+    setup_logging(settings)
+
+    stem = output_name if output_name else f"{audio_file.stem}_{version}"
+
+    from modules.audio_processing.pipeline import run_pipeline
+
+    with console.status("[bold cyan]Executando pipeline...[/bold cyan]") as status:
+        status.update("Pré-processamento + onsets + transcrição por janela + pós-processamento")
+        result = run_pipeline(
+            audio_path=audio_file,
+            output_dir=BASE_DIR / "output" / "processed",
+            output_stem=stem,
+            version_label=version,
+            skip_preprocess=no_preprocess,
+            onset_only=onset_only,
+            chord_cluster_s=chord_cluster,
+            lowcut=lowcut,
+            highcut=highcut,
+            reduce_noise=not no_noise,
+            onset_delta=onset_delta,
+            onset_wait=onset_wait,
+            quantize_rhythm=not no_quantize,
+            min_note_duration_ms=min_dur,
+            max_polyphony=max_poly,
+            tempo=tempo,
+        )
+
+    m = result["metrics"]
+
+    table = Table(title=f"Resultado do Pipeline — {version}", show_header=True)
+    table.add_column("Métrica", style="cyan")
+    table.add_column("Valor", style="green")
+    table.add_row("Notas (saída)", str(m.get("note_count", "?")))
+    table.add_row("Onsets detectados", str(m.get("onset_count", "?")))
+    table.add_row("Cobertura de onsets", f"{m.get('onset_coverage', 0)*100:.1f}%")
+    table.add_row("Polifonia máxima", str(m.get("max_polyphony", "?")))
+    table.add_row("Densidade", f"{m.get('density_notes_per_sec', '?')} notas/s")
+    table.add_row("Pitch range", f"{m.get('pitch_min', '?')}–{m.get('pitch_max', '?')}")
+    table.add_row("Notas < 100ms", str(m.get("notes_under_100ms", "?")))
+    table.add_row("BPM estimado", str(m.get("estimated_bpm", "?")))
+    table.add_row("SNR do áudio", f"{m.get('snr_estimate_db', '?')} dB")
+    table.add_row("MIDI", result["midi_path"])
+    table.add_row("Métricas", result["metrics_path"])
+    console.print(table)
+
+    # Estatísticas de filtragem do pós-processamento
+    stats = m.get("postprocess_stats", {})
+    if stats:
+        ftable = Table(title="Filtragem (pós-processamento)")
+        ftable.add_column("Etapa", style="cyan")
+        ftable.add_column("Notas restantes", style="green", justify="right")
+        ftable.add_row("Entrada (brutas)", str(stats.get("input", "?")))
+        ftable.add_row("Após range do violão", str(stats.get("after_range_filter", "?")))
+        ftable.add_row("Após curtas removidas", str(stats.get("after_short_filter", "?")))
+        ftable.add_row("Após deduplicação", str(stats.get("after_deduplication", "?")))
+        ftable.add_row("Após limite de polifonia", str(stats.get("after_polyphony_limit", "?")))
+        console.print(ftable)
 
 
 if __name__ == "__main__":

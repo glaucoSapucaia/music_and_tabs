@@ -14,13 +14,24 @@
   },
   "audio": {
     "sample_rate": 44100,
-    "onset_threshold": 0.5,
-    "frame_threshold": 0.3,
+    "onset_threshold": 0.6,
+    "frame_threshold": 0.5,
     "minimum_note_length": 58,
-    "minimum_frequency": 65.0,
-    "maximum_frequency": 2100.0,
+    "minimum_frequency": 82.0,
+    "maximum_frequency": 1050.0,
     "multiple_pitch_bends": false,
-    "melodia_trick": true
+    "melodia_trick": false
+  },
+  "pipeline": {
+    "lowcut": 75.0,
+    "highcut": 1500.0,
+    "reduce_noise": true,
+    "onset_delta": 0.09,
+    "onset_wait": 10,
+    "attack_region_s": 0.08,
+    "min_note_duration_ms": 150,
+    "max_polyphony": 6,
+    "quantize_rhythm": true
   },
   "instrument": {
     "type": "violao",
