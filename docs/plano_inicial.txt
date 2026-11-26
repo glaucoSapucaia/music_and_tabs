@@ -1,0 +1,12 @@
+Etapa	Complexidade	Recomendação
+Captura dos arquivos	Baixa	Manual
+Sincronização de áudio/vídeo	Média	Automatizar
+Identificação das notas	Alta	Automatizar e validar
+Geração da tablatura	Alta	Automatizar e permitir correções
+Inserção das vinhetas	Baixa	Automatizar
+Inserção dinâmica da tablatura	Média/alta	Automatizar
+Renderização dos vídeos	Média	Automatizar
+Geração de metadados	Baixa	Automatizar
+Upload para YouTube	Média	Automatizar
+Upload para Instagram	Média/alta	Segunda etapa
+Upload para TikTok	Alta	Deixar manual inicialmente

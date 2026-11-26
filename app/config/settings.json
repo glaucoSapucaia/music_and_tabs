@@ -1,0 +1,36 @@
+{
+  "project": {
+    "name": "music-and-tabs",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "input_dir": "input",
+    "output_dir": "output",
+    "assets_dir": "assets",
+    "logs_dir": "logs",
+    "output_midi": "output/midi",
+    "output_notes": "output/notes",
+    "output_tablatures": "output/tablatures"
+  },
+  "audio": {
+    "sample_rate": 44100,
+    "onset_threshold": 0.5,
+    "frame_threshold": 0.3,
+    "minimum_note_length": 58,
+    "minimum_frequency": 65.0,
+    "maximum_frequency": 2100.0,
+    "multiple_pitch_bends": false,
+    "melodia_trick": true
+  },
+  "instrument": {
+    "type": "violao",
+    "tuning": "standard",
+    "strings": 6,
+    "capo": 0
+  },
+  "logging": {
+    "level": "INFO",
+    "rotation": "10 MB",
+    "retention": "30 days"
+  }
+}

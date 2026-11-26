@@ -1,0 +1,45 @@
+projeto-tcc/
+│
+├── main.py
+│
+├── config/
+│   ├── settings.json
+│   └── templates.json
+│
+├── input/
+│   ├── video.mp4
+│   └── audio.wav
+│
+├── modules/
+│   ├── audio_processing/
+│   │   ├── transcription.py
+│   │   ├── note_detection.py
+│   │   └── tablature.py
+│   │
+│   ├── video_processing/
+│   │   ├── synchronization.py
+│   │   ├── intro.py
+│   │   ├── outro.py
+│   │   ├── tablature_overlay.py
+│   │   └── rendering.py
+│   │
+│   ├── metadata/
+│   │   └── generator.py
+│   │
+│   └── publishing/
+│       ├── youtube.py
+│       ├── instagram.py
+│       └── tiktok.py
+│
+├── assets/
+│   ├── intro.mp4
+│   ├── outro.mp4
+│   └── graphics/
+│
+├── output/
+│   ├── youtube/
+│   ├── instagram/
+│   ├── tiktok/
+│   └── tablatures/
+│
+└── logs/

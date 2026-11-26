@@ -153,6 +153,7 @@ activemq-data/
 .env
 .envrc
 .venv
+app/.venv
 env/
 venv/
 ENV/
@@ -221,3 +222,36 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ── music-and-tabs ───────────────────────────────────────────────────────────
+
+# Arquivos de mídia (input/output — grandes demais para versionar)
+app/input/*.wav
+app/input/*.mp3
+app/input/*.mp4
+app/input/*.mov
+app/input/*.aac
+app/input/*.flac
+
+# Saídas geradas pelo pipeline
+app/output/midi/*.mid
+app/output/notes/*.json
+app/output/tablatures/
+app/output/youtube/
+app/output/instagram/
+app/output/tiktok/
+
+# Assets de mídia (intro/outro em vídeo, fontes pesadas)
+app/assets/*.mp4
+app/assets/*.mov
+app/assets/graphics/*.png
+app/assets/graphics/*.svg
+
+# Logs gerados em runtime (mantém o .gitkeep)
+app/logs/*.log
+
+# Credenciais e segredos de API
+app/config/secrets.json
+app/config/*.credentials.json
+*.token
+*.key

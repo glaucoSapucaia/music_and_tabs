@@ -1,0 +1,14 @@
+Responsabilidade	Tecnologia	Custo
+Linguagem principal	Python	Gratuito
+Transcrição musical	TabGen / Basic Pitch	Gratuito
+Separação de áudio	Demucs	Gratuito
+Análise musical	Librosa	Gratuito
+Sincronização audiovisual	FFmpeg	Gratuito
+Composição de vídeo	FFmpeg / MoviePy	Gratuito
+Manipulação de imagens	Pillow / OpenCV	Gratuito
+Geração de tablatura	MusicXML / PyGuitarPro	Gratuito
+Metadados	Python / JSON	Gratuito
+IA local opcional	Ollama	Gratuito
+Publicação YouTube	YouTube Data API	Sem cobrança dentro das cotas
+Publicação Instagram	Instagram API	Sem cobrança de uso da API
+Publicação TikTok	Content Posting API	Sem cobrança de uso da API
