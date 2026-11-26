@@ -28,6 +28,11 @@
     "strings": 6,
     "capo": 0
   },
+  "chords": {
+    "hop_length": 4096,
+    "min_segment_duration": 0.5,
+    "confidence_threshold": 0.0
+  },
   "logging": {
     "level": "INFO",
     "rotation": "10 MB",

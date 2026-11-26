@@ -237,6 +237,7 @@ app/input/*.flac
 app/output/midi/*.mid
 app/output/notes/*.json
 app/output/tablatures/
+app/output/chords/
 app/output/youtube/
 app/output/instagram/
 app/output/tiktok/

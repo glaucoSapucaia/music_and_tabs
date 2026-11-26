@@ -18,6 +18,7 @@ def transcribe(
     audio_path: str | Path,
     output_midi_dir: str | Path,
     output_notes_dir: str | Path,
+    output_stem: str | None = None,
     onset_threshold: float = 0.5,
     frame_threshold: float = 0.3,
     minimum_note_length: int = 58,
@@ -32,6 +33,7 @@ def transcribe(
         audio_path: Caminho para o arquivo de áudio (.wav ou .mp3)
         output_midi_dir: Diretório onde o arquivo MIDI será salvo
         output_notes_dir: Diretório onde o JSON de notas será salvo
+        output_stem: Nome base dos arquivos de saída (padrão: stem do áudio)
         onset_threshold: Sensibilidade para detectar início das notas (0-1)
         frame_threshold: Sensibilidade para duração das notas (0-1)
         minimum_note_length: Duração mínima das notas em milissegundos
@@ -52,7 +54,7 @@ def transcribe(
     output_midi_dir.mkdir(parents=True, exist_ok=True)
     output_notes_dir.mkdir(parents=True, exist_ok=True)
 
-    stem = audio_path.stem
+    stem = output_stem if output_stem else audio_path.stem
     midi_path = output_midi_dir / f"{stem}.mid"
     notes_path = output_notes_dir / f"{stem}_notes.json"
 
