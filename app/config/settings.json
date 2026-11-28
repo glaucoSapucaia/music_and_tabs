@@ -28,6 +28,10 @@
     "strings": 6,
     "capo": 0
   },
+  "muscriptor": {
+    "model_size": "medium",
+    "device": null
+  },
   "chords": {
     "hop_length": 4096,
     "min_segment_duration": 0.5,

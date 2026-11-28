@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import typer
+from dotenv import load_dotenv
 from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
@@ -19,6 +20,9 @@ from rich.table import Table
 # ── Setup de caminhos ────────────────────────────────────────────────────────
 
 BASE_DIR = Path(__file__).parent
+
+# Carrega .env da raiz do app (antes de qualquer outra coisa)
+load_dotenv(BASE_DIR / ".env")
 CONFIG_PATH = BASE_DIR / "config" / "settings.json"
 
 # ── Carrega settings ─────────────────────────────────────────────────────────
@@ -63,64 +67,127 @@ def transcribe(
         exists=True,
         readable=True,
     ),
+    engine: str = typer.Option(
+        "muscriptor", "--engine", "-e",
+        help="Engine de transcrição: 'muscriptor' (padrão) ou 'basic-pitch'",
+    ),
     output_name: str = typer.Option(
         None, "--output-name", "-n",
         help="Nome base dos arquivos de saída (sem extensão). Padrão: nome do áudio.",
     ),
-    onset: float = typer.Option(None, "--onset", "-o", help="Onset threshold (0-1)"),
-    frame: float = typer.Option(None, "--frame", "-f", help="Frame threshold (0-1)"),
-    min_freq: float = typer.Option(None, "--min-freq", help="Frequência mínima em Hz"),
-    max_freq: float = typer.Option(None, "--max-freq", help="Frequência máxima em Hz"),
-    min_note_len: int = typer.Option(None, "--min-note-len", help="Duração mínima de nota em ms"),
-    no_melodia: bool = typer.Option(False, "--no-melodia", help="Desativa o melodia trick"),
+    # ── Opções MuScriptor ────────────────────────────────────────────────────
+    model_size: str = typer.Option(
+        None, "--model",
+        help="[muscriptor] Tamanho do modelo: 'small', 'medium' ou 'large'",
+    ),
+    device: str = typer.Option(
+        None, "--device",
+        help="[muscriptor] Dispositivo: 'cpu', 'cuda', 'mps'. Padrão: automático",
+    ),
+    instruments: str = typer.Option(
+        None, "--instruments",
+        help="[muscriptor] Instrumentos separados por vírgula, ex: 'guitar,piano'. Padrão: automático",
+    ),
+    # ── Opções Basic Pitch ───────────────────────────────────────────────────
+    onset: float = typer.Option(None, "--onset", "-o", help="[basic-pitch] Onset threshold (0-1)"),
+    frame: float = typer.Option(None, "--frame", "-f", help="[basic-pitch] Frame threshold (0-1)"),
+    min_freq: float = typer.Option(None, "--min-freq", help="[basic-pitch] Frequência mínima em Hz"),
+    max_freq: float = typer.Option(None, "--max-freq", help="[basic-pitch] Frequência máxima em Hz"),
+    min_note_len: int = typer.Option(None, "--min-note-len", help="[basic-pitch] Duração mínima de nota em ms"),
+    no_melodia: bool = typer.Option(False, "--no-melodia", help="[basic-pitch] Desativa o melodia trick"),
 ) -> None:
-    """Transcreve um arquivo de áudio e gera MIDI + JSON de notas."""
+    """Transcreve um arquivo de áudio e gera MIDI.
+
+    Engine padrão: muscriptor (requer autenticação no HuggingFace).
+    Use --engine basic-pitch para o engine alternativo sem autenticação.
+    """
     settings = load_settings()
     setup_logging(settings)
 
-    audio_cfg = settings["audio"]
-    paths = settings["paths"]
-
-    # Sobrescreve com valores da CLI se fornecidos
-    onset_threshold  = onset        if onset        is not None else audio_cfg["onset_threshold"]
-    frame_threshold  = frame        if frame        is not None else audio_cfg["frame_threshold"]
-    minimum_frequency = min_freq    if min_freq     is not None else audio_cfg["minimum_frequency"]
-    maximum_frequency = max_freq    if max_freq     is not None else audio_cfg["maximum_frequency"]
-    min_note_length   = min_note_len if min_note_len is not None else audio_cfg["minimum_note_length"]
-    melodia           = not no_melodia and audio_cfg["melodia_trick"]
-
     stem = output_name if output_name else audio_file.stem
 
-    console.print(Panel.fit(
-        f"[bold cyan]Transcrevendo:[/bold cyan] {audio_file.name}  →  [green]{stem}[/green]\n"
-        f"onset={onset_threshold}  frame={frame_threshold}  "
-        f"freq=[{minimum_frequency}, {maximum_frequency}] Hz  "
-        f"min_note={min_note_length}ms  melodia={melodia}",
-        title="music-and-tabs",
-    ))
+    if engine not in ("muscriptor", "basic-pitch"):
+        console.print(f"[red]Engine inválido: '{engine}'. Use 'muscriptor' ou 'basic-pitch'.[/red]")
+        raise typer.Exit(1)
 
-    from modules.audio_processing.transcription import transcribe as run_transcription
+    # ── MuScriptor ───────────────────────────────────────────────────────────
+    if engine == "muscriptor":
+        musc_cfg = settings.get("muscriptor", {})
+        size = model_size or musc_cfg.get("model_size", "small")
+        dev  = device     or musc_cfg.get("device", None)
+        instr_list = [i.strip() for i in instruments.split(",")] if instruments else None
 
-    result = run_transcription(
-        audio_path=audio_file,
-        output_midi_dir=BASE_DIR / paths["output_midi"],
-        output_notes_dir=BASE_DIR / paths["output_notes"],
-        output_stem=stem,
-        onset_threshold=onset_threshold,
-        frame_threshold=frame_threshold,
-        minimum_note_length=min_note_length,
-        minimum_frequency=minimum_frequency,
-        maximum_frequency=maximum_frequency,
-        melodia_trick=melodia,
-    )
+        console.print(Panel.fit(
+            f"[bold cyan]Transcrevendo:[/bold cyan] {audio_file.name}  →  [green]{stem}[/green]\n"
+            f"engine=[bold]muscriptor[/bold]  model={size}  device={dev or 'auto'}"
+            + (f"  instruments={','.join(instr_list)}" if instr_list else ""),
+            title="music-and-tabs",
+        ))
 
-    table = Table(title="Resultado da Transcrição", show_header=True)
-    table.add_column("Campo", style="cyan")
-    table.add_column("Valor", style="green")
-    table.add_row("Notas detectadas", str(result["note_count"]))
-    table.add_row("MIDI", result["midi_path"])
-    table.add_row("JSON de notas", result["notes_path"])
-    console.print(table)
+        from modules.audio_processing.transcription_muscriptor import transcribe as run_muscriptor
+
+        try:
+            result = run_muscriptor(
+                audio_path=audio_file,
+                output_midi_dir=BASE_DIR / settings["paths"]["output_midi"],
+                output_stem=stem,
+                model_size=size,
+                device=dev,
+                instruments=instr_list,
+            )
+        except RuntimeError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
+
+        table = Table(title="Resultado da Transcrição (MuScriptor)", show_header=True)
+        table.add_column("Campo", style="cyan")
+        table.add_column("Valor", style="green")
+        table.add_row("Engine", f"MuScriptor ({result['model_size']})")
+        table.add_row("MIDI", result["midi_path"])
+        console.print(table)
+
+    # ── Basic Pitch ──────────────────────────────────────────────────────────
+    else:
+        audio_cfg = settings["audio"]
+        paths     = settings["paths"]
+
+        onset_threshold   = onset        if onset        is not None else audio_cfg["onset_threshold"]
+        frame_threshold   = frame        if frame        is not None else audio_cfg["frame_threshold"]
+        minimum_frequency = min_freq     if min_freq     is not None else audio_cfg["minimum_frequency"]
+        maximum_frequency = max_freq     if max_freq     is not None else audio_cfg["maximum_frequency"]
+        min_note_length   = min_note_len if min_note_len is not None else audio_cfg["minimum_note_length"]
+        melodia           = not no_melodia and audio_cfg["melodia_trick"]
+
+        console.print(Panel.fit(
+            f"[bold cyan]Transcrevendo:[/bold cyan] {audio_file.name}  →  [green]{stem}[/green]\n"
+            f"engine=[bold]basic-pitch[/bold]  onset={onset_threshold}  frame={frame_threshold}  "
+            f"freq=[{minimum_frequency}, {maximum_frequency}] Hz",
+            title="music-and-tabs",
+        ))
+
+        from modules.audio_processing.transcription import transcribe as run_basic_pitch
+
+        result = run_basic_pitch(
+            audio_path=audio_file,
+            output_midi_dir=BASE_DIR / paths["output_midi"],
+            output_notes_dir=BASE_DIR / paths["output_notes"],
+            output_stem=stem,
+            onset_threshold=onset_threshold,
+            frame_threshold=frame_threshold,
+            minimum_note_length=min_note_length,
+            minimum_frequency=minimum_frequency,
+            maximum_frequency=maximum_frequency,
+            melodia_trick=melodia,
+        )
+
+        table = Table(title="Resultado da Transcrição (Basic Pitch)", show_header=True)
+        table.add_column("Campo", style="cyan")
+        table.add_column("Valor", style="green")
+        table.add_row("Engine", "Basic Pitch")
+        table.add_row("Notas detectadas", str(result["note_count"]))
+        table.add_row("MIDI", result["midi_path"])
+        table.add_row("JSON de notas", result["notes_path"])
+        console.print(table)
 
 
 @app.command()
